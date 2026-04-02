@@ -22,26 +22,25 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
   // State untuk fitur pencarian file
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fitur verifikasi nama sebelum file disimpan (diupload)
+  // Fitur verifikasi NAMA KTP sebelum file disimpan (diupload)
   const processUpload = (file: File) => {
-    const confirmedName = window.prompt(
-      'Verifikasi nama file sebelum disimpan. Anda bisa mengubah namanya jika perlu:', 
-      file.name
+    const ktpName = window.prompt(
+      'Verifikasi Dokumen: Masukkan NAMA ASLI SESUAI KTP Anda untuk menyimpan dokumen ini:'
     );
 
-    if (confirmedName === null || confirmedName.trim() === '') {
-      alert('Upload dibatalkan.');
+    // Batal jika user klik cancel atau input kosong
+    if (ktpName === null || ktpName.trim() === '') {
+      alert('Upload dibatalkan. Nama sesuai KTP wajib diisi untuk verifikasi.');
       return;
     }
 
-    let finalFile = file;
-    // Jika user mengubah nama di prompt, buat ulang objek File dengan nama baru
-    if (confirmedName !== file.name) {
-      const finalName = confirmedName.toLowerCase().endsWith('.pdf') 
-        ? confirmedName 
-        : `${confirmedName}.pdf`;
-      finalFile = new File([file], finalName, { type: file.type });
-    }
+    // Menyematkan nama KTP ke dalam nama file
+    // Contoh hasil: "[BUDI SANTOSO] surat_pengantar.pdf"
+    const formattedKtpName = ktpName.trim().toUpperCase();
+    const finalName = `[${formattedKtpName}] ${file.name}`;
+    
+    // Buat file baru dengan nama yang sudah disematkan KTP
+    const finalFile = new File([file], finalName, { type: file.type });
 
     onUpload(finalFile);
   };
@@ -77,17 +76,29 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
     setIsDragging(false);
   };
 
-  // Fitur verifikasi sebelum mengambil/mendownload file
+  // Fitur verifikasi NAMA KTP sebelum mengambil/mendownload file
   const handleDownload = (file: PDFFile) => {
-    const verification = window.prompt(
-      `Verifikasi Pengambilan: Silakan ketik persis nama file di bawah ini untuk mengambil dokumen.\n\nNama File: ${file.name}`
+    const ktpNameInput = window.prompt(
+      'Verifikasi Pengambilan: Masukkan NAMA ASLI SESUAI KTP Anda untuk mengambil dokumen ini:'
     );
 
-    if (verification === file.name) {
-      alert(`Verifikasi berhasil! Dokumen ${file.name} sedang disiapkan untuk diunduh...`);
+    if (ktpNameInput === null) return; // Batal jika user klik cancel
+
+    // Mengekstrak nama KTP yang ada di dalam kurung siku pada nama file
+    const match = file.name.match(/^\[(.*?)\]/);
+    const expectedKtpName = match ? match[1] : '';
+
+    if (!expectedKtpName) {
+      alert('Dokumen ini tidak memiliki data verifikasi KTP (kemungkinan file versi lama).');
+      return;
+    }
+
+    // Pencocokan mengabaikan huruf besar/kecil (case-insensitive)
+    if (ktpNameInput.trim().toUpperCase() === expectedKtpName.toUpperCase()) {
+      alert(`Verifikasi KTP berhasil! Dokumen sedang disiapkan untuk diunduh...`);
       // Panggil fungsi download asli dari backend di sini nantinya
-    } else if (verification !== null) {
-      alert('Verifikasi gagal! Nama dokumen yang Anda masukkan tidak cocok.');
+    } else {
+      alert('Verifikasi gagal! Nama KTP yang Anda masukkan tidak cocok dengan data kepemilikan dokumen.');
     }
   };
 
@@ -195,7 +206,10 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
                         <FileText className="w-6 h-6 text-accent" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-primary font-medium truncate">{file.name}</h3>
+                        {/* Menampilkan nama file asli tanpa tag [NAMA KTP] di UI agar terlihat rapi */}
+                        <h3 className="text-primary font-medium truncate">
+                          {file.name.replace(/^\[.*?\]\s*/, '')}
+                        </h3>
                         <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                           <span>{file.size}</span>
                           <span>•</span>
@@ -204,7 +218,7 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
                       </div>
                     </div>
                     <div className="flex items-center space-x-2 ml-4">
-                      {/* Download Button dengan verifikasi */}
+                      {/* Tombol Download dengan handleDownload KTP */}
                       <button
                         onClick={() => handleDownload(file)}
                         className="p-2 text-secondary hover:bg-secondary/10 rounded-lg transition-colors"
