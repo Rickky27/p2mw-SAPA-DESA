@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, FileText, LogOut, Download, Trash2, Building2 } from 'lucide-react';
+import { Upload, FileText, LogOut, Download, Trash2, Building2, Search } from 'lucide-react';
 
 interface PDFFile {
   id: string;
@@ -19,13 +19,39 @@ interface UserDashboardProps {
 
 export function UserDashboard({ username, onLogout, files, onUpload, onDelete }: UserDashboardProps) {
   const [isDragging, setIsDragging] = useState(false);
+  // State untuk fitur pencarian file
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Fitur verifikasi nama sebelum file disimpan (diupload)
+  const processUpload = (file: File) => {
+    const confirmedName = window.prompt(
+      'Verifikasi nama file sebelum disimpan. Anda bisa mengubah namanya jika perlu:', 
+      file.name
+    );
+
+    if (confirmedName === null || confirmedName.trim() === '') {
+      alert('Upload dibatalkan.');
+      return;
+    }
+
+    let finalFile = file;
+    // Jika user mengubah nama di prompt, buat ulang objek File dengan nama baru
+    if (confirmedName !== file.name) {
+      const finalName = confirmedName.toLowerCase().endsWith('.pdf') 
+        ? confirmedName 
+        : `${confirmedName}.pdf`;
+      finalFile = new File([file], finalName, { type: file.type });
+    }
+
+    onUpload(finalFile);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type === 'application/pdf') {
-      onUpload(file);
-      e.target.value = '';
-    } else {
+      processUpload(file);
+      e.target.value = ''; // Reset input
+    } else if (file) {
       alert('Hanya file PDF yang diperbolehkan');
     }
   };
@@ -36,8 +62,8 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
 
     const file = e.dataTransfer.files[0];
     if (file && file.type === 'application/pdf') {
-      onUpload(file);
-    } else {
+      processUpload(file);
+    } else if (file) {
       alert('Hanya file PDF yang diperbolehkan');
     }
   };
@@ -51,7 +77,24 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
     setIsDragging(false);
   };
 
-  const userFiles = files.filter(file => file.uploadedBy === username);
+  // Fitur verifikasi sebelum mengambil/mendownload file
+  const handleDownload = (file: PDFFile) => {
+    const verification = window.prompt(
+      `Verifikasi Pengambilan: Silakan ketik persis nama file di bawah ini untuk mengambil dokumen.\n\nNama File: ${file.name}`
+    );
+
+    if (verification === file.name) {
+      alert(`Verifikasi berhasil! Dokumen ${file.name} sedang disiapkan untuk diunduh...`);
+      // Panggil fungsi download asli dari backend di sini nantinya
+    } else if (verification !== null) {
+      alert('Verifikasi gagal! Nama dokumen yang Anda masukkan tidak cocok.');
+    }
+  };
+
+  // Filter file berdasarkan username DAN query pencarian
+  const userFiles = files
+    .filter(file => file.uploadedBy === username)
+    .filter(file => file.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -82,7 +125,7 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Upload Area */}
         <div className="mb-8">
-          <h2 className="text-primary mb-4">Upload Dokumen Desa</h2>
+          <h2 className="text-primary mb-4 font-semibold text-lg">Upload Dokumen Desa</h2>
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -112,13 +155,32 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
           </div>
         </div>
 
-        {/* Files List */}
+        {/* Files List Section */}
         <div>
-          <h2 className="text-primary mb-4">Dokumen Saya ({userFiles.length})</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+            <h2 className="text-primary font-semibold text-lg">Dokumen Saya ({userFiles.length})</h2>
+            
+            {/* Search Bar */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Cari nama dokumen..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-secondary focus:border-secondary sm:text-sm"
+              />
+            </div>
+          </div>
+
           {userFiles.length === 0 ? (
             <div className="bg-white rounded-xl p-12 text-center border border-border">
               <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">Belum ada dokumen yang diupload</p>
+              <p className="text-muted-foreground">
+                {searchQuery ? 'Dokumen yang dicari tidak ditemukan' : 'Belum ada dokumen yang diupload'}
+              </p>
             </div>
           ) : (
             <div className="grid gap-4">
@@ -133,7 +195,7 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
                         <FileText className="w-6 h-6 text-accent" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-primary truncate">{file.name}</h3>
+                        <h3 className="text-primary font-medium truncate">{file.name}</h3>
                         <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                           <span>{file.size}</span>
                           <span>•</span>
@@ -142,16 +204,17 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
                       </div>
                     </div>
                     <div className="flex items-center space-x-2 ml-4">
+                      {/* Download Button dengan verifikasi */}
                       <button
-                        onClick={() => alert('Fitur download akan tersedia setelah integrasi backend')}
+                        onClick={() => handleDownload(file)}
                         className="p-2 text-secondary hover:bg-secondary/10 rounded-lg transition-colors"
-                        title="Download"
+                        title="Ambil / Download"
                       >
                         <Download className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => {
-                          if (confirm('Apakah Anda yakin ingin menghapus file ini?')) {
+                          if (confirm('Apakah Anda yakin ingin menghapus dokumen ini?')) {
                             onDelete(file.id);
                           }
                         }}
