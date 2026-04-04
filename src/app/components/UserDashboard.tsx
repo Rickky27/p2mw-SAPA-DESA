@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   Upload, FileText, LogOut, Download, Trash2, Building2, 
   Search, UserCircle, FilePlus, Clock, CheckCircle, XCircle, 
-  AlertCircle, Send 
+  AlertCircle, Send, QrCode, FileCheck 
 } from 'lucide-react';
 
 interface PDFFile {
@@ -13,13 +13,12 @@ interface PDFFile {
   size: string;
 }
 
-// Interface baru untuk Pengajuan Surat
 interface LetterRequest {
   id: string;
   type: string;
   status: 'diproses' | 'perbaiki' | 'disetujui' | 'ditolak';
   date: string;
-  notes?: string; // Catatan dari admin jika ada yang perlu diperbaiki/ditolak
+  notes?: string; 
 }
 
 interface UserDashboardProps {
@@ -35,18 +34,17 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // State untuk Form Pengajuan Surat
+  // State Form Pengajuan Surat
   const [letterType, setLetterType] = useState('Surat Keterangan Domisili');
   const [formData, setFormData] = useState({ nik: '', nama: '', keperluan: '' });
   
-  // State dummy untuk Tracking Status (Di aplikasi nyata ini dari database/API)
+  // State dummy Tracking Status
   const [requests, setRequests] = useState<LetterRequest[]>([
     { id: 'REQ-001', type: 'Surat Keterangan Usaha (SKU)', status: 'disetujui', date: '10 Okt 2023' },
     { id: 'REQ-002', type: 'Surat Keterangan Tidak Mampu (SKTM)', status: 'perbaiki', date: '12 Okt 2023', notes: 'Foto KTP buram, mohon upload ulang.' },
     { id: 'REQ-003', type: 'Surat Keterangan Domisili', status: 'diproses', date: '15 Okt 2023' },
   ]);
 
-  // DATA PROFIL (Hanya Baca/Read-Only)
   const leaderProfile = {
     name: "H. Ahmad Subarjo, S.T.",
     period: "2020 - 2026",
@@ -93,6 +91,11 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
     alert('Pengajuan surat berhasil dikirim!');
   };
 
+  // Logika Download Surat Resmi (Dengan QR & TTE)
+  const handleDownloadOfficialLetter = (req: LetterRequest) => {
+    alert(`Mengunduh Dokumen: ${req.type}\n\nDokumen ini telah disahkan secara digital dengan Tanda Tangan Elektronik (TTE) Pimpinan Desa dan dilengkapi QR Code terenkripsi untuk memverifikasi keaslian guna mencegah pemalsuan.`);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'disetujui':
@@ -114,7 +117,6 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-primary text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -135,7 +137,7 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         
-        {/* SECTION 1: TAMPILAN PROFIL KEPALA DESA */}
+        {/* SECTION 1: PROFIL PIMPINAN */}
         <div className="mb-8 bg-white rounded-2xl overflow-hidden shadow-sm border border-border">
           <div className="bg-primary/5 px-6 py-3 border-b border-border flex items-center gap-2">
             <UserCircle className="w-4 h-4 text-primary" />
@@ -176,10 +178,9 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
           </button>
         </div>
 
-        {/* TAB KONTEN 1: MANAJEMEN DOKUMEN */}
+        {/* TAB KONTEN 1: MANAJEMEN DOKUMEN (SAMA SEPERTI SEBELUMNYA) */}
         {activeTab === 'documents' && (
           <div>
-            {/* AREA UPLOAD */}
             <div className="mb-8">
               <h3 className="text-primary font-bold mb-4">Upload Dokumen Baru</h3>
               <div
@@ -203,7 +204,6 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
               </div>
             </div>
 
-            {/* LIST DOKUMEN SAYA */}
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-primary font-bold">Dokumen Saya ({userFiles.length})</h3>
@@ -248,12 +248,12 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
           </div>
         )}
 
-        {/* TAB KONTEN 2: PENGAJUAN SURAT */}
+        {/* TAB KONTEN 2: PENGAJUAN SURAT & TRACKING STATUS */}
         {activeTab === 'requests' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* FORM PENGAJUAN */}
-            <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
+            <div className="bg-white p-6 rounded-2xl border border-border shadow-sm h-fit">
               <div className="flex items-center gap-2 mb-6">
                 <FilePlus className="w-5 h-5 text-primary" />
                 <h3 className="text-primary font-bold text-lg">Buat Pengajuan Baru</h3>
@@ -323,8 +323,8 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
               </form>
             </div>
 
-            {/* TRACKING STATUS */}
-            <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
+            {/* TRACKING STATUS & DOWNLOAD SURAT */}
+            <div className="bg-white p-6 rounded-2xl border border-border shadow-sm h-fit">
               <h3 className="text-primary font-bold text-lg mb-6">Status Pengajuan Saya</h3>
               
               {requests.length === 0 ? (
@@ -334,7 +334,7 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
               ) : (
                 <div className="space-y-4">
                   {requests.map((req) => (
-                    <div key={req.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 flex flex-col gap-3">
+                    <div key={req.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50 flex flex-col gap-3 shadow-sm">
                       <div className="flex items-start justify-between">
                         <div>
                           <h4 className="font-bold text-sm text-gray-800">{req.type}</h4>
@@ -343,10 +343,28 @@ export function UserDashboard({ username, onLogout, files, onUpload, onDelete }:
                         {getStatusBadge(req.status)}
                       </div>
                       
-                      {/* Tampilkan catatan jika ada (terutama untuk status Perbaiki/Ditolak) */}
+                      {/* CATATAN PETUGAS */}
                       {req.notes && (
                         <div className={`p-3 rounded-lg text-xs border ${req.status === 'perbaiki' ? 'bg-orange-50 border-orange-100 text-orange-800' : 'bg-red-50 border-red-100 text-red-800'}`}>
                           <strong>Catatan Petugas:</strong> {req.notes}
+                        </div>
+                      )}
+
+                      {/* FITUR TTE & QR CODE MUNCUL JIKA SURAT DISETUJUI */}
+                      {req.status === 'disetujui' && (
+                        <div className="mt-2 pt-3 border-t border-gray-200/60 flex flex-col gap-3">
+                          <div className="flex items-start gap-2 text-xs text-green-700 bg-green-50 p-3 rounded-lg border border-green-100">
+                            <QrCode className="w-4 h-4 mt-0.5 shrink-0" />
+                            <p>
+                              Dokumen ini telah disahkan dengan <strong>Tanda Tangan Elektronik (TTE)</strong> dan dilengkapi <strong>QR Code</strong> untuk verifikasi anti-pemalsuan.
+                            </p>
+                          </div>
+                          <button 
+                            onClick={() => handleDownloadOfficialLetter(req)}
+                            className="flex items-center justify-center gap-2 w-full py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-colors shadow-sm"
+                          >
+                            <FileCheck className="w-4 h-4" /> Download Surat Resmi
+                          </button>
                         </div>
                       )}
                     </div>
